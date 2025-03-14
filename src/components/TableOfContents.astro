@@ -35,7 +35,7 @@ const { headings } = Astro.props;
 <style>
   .toc-container {
     position: fixed;
-    top: var(--header-height, 60px); /* Default header height if CSS variable not defined */
+    top: 66px; /* Default header height if CSS variable not defined */
     left: -250px; /* Default position - hide content but not button */
     height: calc(100vh - 66px);
     z-index: 100;
@@ -173,24 +173,8 @@ const { headings } = Astro.props;
 
   /* Responsive adjustments - Mobile First approach */
   @media (max-width: 768px) {
-    .toc-container {
-      top: var(--header-height-mobile, 50px); /* Smaller header on mobile */
-      height: calc(100vh - var(--header-height-mobile, 50px) - var(--bottom-spacing-mobile, 10px));
-    }
-
     .toc-content {
       max-width: 280px;
-    }
-
-    .toc-toggle {
-      left: 100%; /* Position relative to the container width */
-      padding: 15px; /* Larger touch target */
-      border-radius: 0 10px 10px 0; /* More rounded corners */
-    }
-
-    .toc-toggle svg {
-      width: 28px; /* Larger icon */
-      height: 28px;
     }
 
     :global(.toc-open .article-container) {
@@ -211,152 +195,3 @@ const { headings } = Astro.props;
     }
   }
 </style>
-
-<script>
-  // Define header height as CSS variable for accurate calculations
-  const header = document.querySelector('header');
-  if (header) {
-    const headerHeight = header.offsetHeight;
-    document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
-    document.documentElement.style.setProperty('--header-height-mobile', `${headerHeight}px`);
-  }
-
-  const tocContainer = document.querySelector('.toc-container');
-  const tocToggle = document.querySelector('.toc-toggle');
-  const tocLinks = document.querySelectorAll('.toc-item a');
-  const articleContainer = document.querySelector('.article-container')?.parentElement;
-
-  // Toggle the TOC when the button is clicked
-  tocToggle?.addEventListener('click', () => {
-    tocContainer?.classList.toggle('open');
-    articleContainer?.classList.toggle('toc-open');
-  });
-
-  // Enhanced smooth scroll function
-  const smoothScroll = (targetElement, duration = 800) => {
-    const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
-    const startPosition = window.pageYOffset;
-    const distance = targetPosition - startPosition - 80; // Offset for header
-    let startTime = null;
-
-    function animation(currentTime) {
-      if (startTime === null) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      const run = ease(timeElapsed, startPosition, distance, duration);
-      window.scrollTo(0, run);
-      if (timeElapsed < duration) requestAnimationFrame(animation);
-    }
-
-    // Easing function for smoother animation
-    function ease(t, b, c, d) {
-      t /= d / 2;
-      if (t < 1) return c / 2 * t * t + b;
-      t--;
-      return -c / 2 * (t * (t - 2) - 1) + b;
-    }
-
-    requestAnimationFrame(animation);
-  };
-
-  // Close the TOC when a link is clicked (especially useful on mobile)
-  tocLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault(); // Prevent default anchor behavior
-      
-      // On mobile screens, close the TOC after clicking a link
-      if (window.innerWidth <= 768) {
-        tocContainer?.classList.remove('open');
-        articleContainer?.classList.remove('toc-open');
-      }
-      
-      // Smooth scroll to the anchor
-      const targetId = link.getAttribute('href')?.substring(1);
-      const targetElement = document.getElementById(targetId || '');
-      
-      if (targetElement) {
-        // Add a small delay to account for the TOC closing animation
-        setTimeout(() => {
-          smoothScroll(targetElement);
-          // Update URL hash after scroll
-          window.history.pushState(null, '', `#${targetId}`);
-        }, window.innerWidth <= 768 ? 300 : 100);
-      }
-    });
-  });
-
-  // Close TOC when clicking outside of it
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
-    const isInsideToc = tocContainer?.contains(target);
-    const isToggleButton = tocToggle?.contains(target);
-    
-    if (!isInsideToc && !isToggleButton && tocContainer?.classList.contains('open')) {
-      tocContainer?.classList.remove('open');
-      articleContainer?.classList.remove('toc-open');
-    }
-  });
-
-  // Track active section based on scroll position with improved behavior
-  const observeHeadings = () => {
-    const headingElements = document.querySelectorAll('.article-content h2, .article-content h3, .article-content h4, .article-content h5, .article-content h6');
-    
-    const observer = new IntersectionObserver((entries) => {
-      // Find the heading that is most visible
-      let maxVisibleHeading = null;
-      let maxVisibility = 0;
-
-      entries.forEach(entry => {
-        // Calculate how much of the element is visible
-        const boundingRect = entry.boundingClientRect;
-        const visibleHeight = Math.min(boundingRect.bottom, window.innerHeight) - 
-                              Math.max(boundingRect.top, 0);
-        const visibilityRatio = visibleHeight / boundingRect.height;
-        
-        if (entry.isIntersecting && visibilityRatio > maxVisibility) {
-          maxVisibility = visibilityRatio;
-          maxVisibleHeading = entry.target;
-        }
-      });
-
-      if (maxVisibleHeading) {
-        // Clear previous active links
-        tocLinks.forEach(link => link.classList.remove('active'));
-        
-        // Find the corresponding TOC link and make it active
-        const activeId = maxVisibleHeading.id;
-        const activeLink = document.querySelector(`.toc-item a[href="#${activeId}"]`);
-        
-        if (activeLink) {
-          activeLink.classList.add('active');
-          
-          // Scroll active item into view within the TOC if needed
-          const tocContent = document.querySelector('.toc-content');
-          if (tocContent && tocContainer?.classList.contains('open')) {
-            const linkRect = activeLink.getBoundingClientRect();
-            const tocRect = tocContent.getBoundingClientRect();
-            
-            if (linkRect.bottom > tocRect.bottom || linkRect.top < tocRect.top) {
-              activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          }
-        }
-      }
-    }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1], rootMargin: '-80px 0px -40% 0px' });
-    
-    headingElements.forEach(heading => {
-      observer.observe(heading);
-    });
-  };
-  
-  // Initialize heading observation after a short delay to ensure all content is rendered
-  setTimeout(observeHeadings, 500);
-
-  // Update dimensions on resize
-  window.addEventListener('resize', () => {
-    if (header) {
-      const headerHeight = header.offsetHeight;
-      document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
-      document.documentElement.style.setProperty('--header-height-mobile', `${headerHeight}px`);
-    }
-  });
-</script>
