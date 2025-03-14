@@ -1,0 +1,50 @@
+---
+import LayoutBlog from '../layout/LayoutBlog.astro';
+import Article from '../components/Article.astro';
+import { getCollection } from 'astro:content';
+const posts = await getCollection('blog');
+---
+
+<LayoutBlog title="Deep Research Blog">
+  <div class="blog-description">
+    <h2>Latest Research Findings</h2>
+  </div>
+
+  <!-- Blog Posts Grid -->
+  <div class="blog-posts">
+    {posts.map(post => (
+      <Article
+        title={post.data.title}
+        description={post.data.description}
+        date={post.data.date}
+        id={post.id}
+      />
+    ))}
+  </div>
+</LayoutBlog>
+
+<style>
+  .blog-description {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .blog-posts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  /* Responsive Design */
+  @media (min-width: 768px) {
+    .blog-posts {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .blog-posts {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
